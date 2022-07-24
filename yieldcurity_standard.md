@@ -1,7 +1,6 @@
-# The Yieldcurity Standard 
+# The Yieldcurity Standard
 
-Opinionated **security**, **code quality** standards, and **code review policies and procedures** for **Solidity** smart contracts.  Inspired by and fully incorporating [The Solcurity Standard](https://github.com/Rari-Capital/solcurity).
-
+Opinionated **security**, **code quality** standards, and **code review policies and procedures** for **Solidity** smart contracts. Inspired by and fully incorporating [The Solcurity Standard](https://github.com/Rari-Capital/solcurity).
 
 ## Variables
 
@@ -89,7 +88,7 @@ Opinionated **security**, **code quality** standards, and **code review policies
 - `C36` - Do not use assembly for create2. Prefer the modern salted contract creation syntax.
 - `C37` - Do not use assembly to access chainid or contract code/size/hash. Prefer the modern Solidity syntax.
 - `C38` - Use the `delete` keyword when setting a variable to a zero value (`0`, `false`, `""`, etc).
-- `C39` - Comment the "why" as much as possible. 
+- `C39` - Comment the "why" as much as possible.
 - `C40` - Comment the "what" if using obscure syntax or writing unconventional code.
 - `C41` - Comment explanations + example inputs/outputs next to complex and fixed point math.
 - `C42` - Comment explanations wherever optimizations are done, along with an estimate of much gas they save.
@@ -97,7 +96,7 @@ Opinionated **security**, **code quality** standards, and **code review policies
 - `C44` - Use `unchecked` blocks where overflow/underflow is impossible, or where an overflow/underflow is unrealistic on human timescales (counters, etc). Comment explanations wherever `unchecked` is used, along with an estimate of how much gas it saves (if relevant).
 - `C45` - Do not depend on Solidity's arithmetic operator precedence rules. In addition to the use of parentheses to override default operator precedence, parentheses should also be used to emphasise it.
 - `C46` - Expressions passed to logical/comparison operators (`&&`/`||`/`>=`/`==`/etc) should not have side-effects.
-- `C47` - Wherever arithmetic operations are performed that could result in precision loss, ensure it benefits the right actors in the system, and document it with comments. 
+- `C47` - Wherever arithmetic operations are performed that could result in precision loss, ensure it benefits the right actors in the system, and document it with comments.
 - `C48` - Document the reason why a reentrancy lock is necessary whenever it's used with an inline or `@dev` natspec comment.
 - `C49` - When fuzzing functions that only operate on specific numerical ranges use modulo to tighten the fuzzer's inputs (such as `x = x % 10000 + 1` to restrict from 1 to 10,000).
 - `C50` - Use ternary expressions to simplify branching logic wherever possible.
@@ -166,42 +165,61 @@ Opinionated **security**, **code quality** standards, and **code review policies
 - `D10` - Be careful of relying on the raw token balance of a contract to determine earnings. Contracts which provide a way to recover assets sent directly to them can mess up share price functions that rely on the raw Ether or token balances of an address.
 - `D11` - If your contract is a target for token approvals, do not make arbitrary calls from user input.
 
-
 ## Testing
 
-- `T1` - All state variable changes in the contracts that you code.
-- `T2` - All state variable changes in other contracts caused by calls from contracts that you code.
-- `T3` - All require or revert in the contracts that you code.
-- `T4` - All events being emitted.
-- `T5` - All return values in contracts that you code.
-- `T6` - Internal functions should be inherited by a mock contract for testing.
-- `T7` - Fuzz testing should be used for functions that take in some conditional range of values - as opposed to conveniently testing with a singular data point. 
+- `T1y` - All state variable changes in the contracts that you code.
+- `T2y` - All state variable changes in other contracts caused by calls from contracts that you code.
+- `T3y` - All require or revert in the contracts that you code.
+- `T4y` - All events being emitted.
+- `T5y` - All return values in contracts that you code.
+- `T6y` - Internal functions should be inherited by a mock contract for testing.
+- `T7y` - Fuzz testing should be used for functions that take in some conditional range of values - as opposed to conveniently testing with a singular data point.
 
-#### Other points of consideration:
-(do we want to include these?)
-- Use coverage tools (like Foundry's coverage tool) to see how well your tests cover your code.
-- Run Slither/Mythril
-- Foundry Integration tests
-- Foundry CI & Slither CI are helpful. If you use forge-template you get both out of the box.
+> TO-DO: State diagrams, [testing trees](/StateTreeExample.md)
 
 ## Deployment
 
-Deployment should be done via Foundry scripts. 
+Deployment should be done via Foundry scripts.
 Before proceeding with deployment, prepare/update your Incident Response Plan.
 
-Ensure deployment goes exactly as planned by writing a test testing every state transition and make sure no changes unexpectedly happen. 
-- Use the record cheatcode. 
-    - If performing an upgrade to an existing protocol, create a list of your entire protocol's addresses, call record, perform the upgrade. 
-    - Then, call accesses for each address of your protocol. 
-    - Ensure there are no slots/addresses that unexpectedly changed.
+Ensure deployment goes exactly as planned by writing a test testing every state transition and make sure no changes unexpectedly happen.
 
+- Use the record cheatcode.
+  - If performing an upgrade to an existing protocol, create a list of your entire protocol's addresses, call record, perform the upgrade.
+  - Then, call accesses for each address of your protocol.
+  - Ensure there are no slots/addresses that unexpectedly changed.
 
 ## Post-Deployment
 
 - Consider if this an audit is required.
-    - Have the complexity & code size inform if and who should audit your contracts.
+  - Have the complexity & code size inform if and who should audit your contracts.
 - Setup monitoring service using [Tenderly](https://tenderly.co/); setup in-line with the Incident Response Plan.
 
+# Best Practices
 
+### Private vs Internal
 
+- We generally do not use private, always favouring internal.
 
+**Explanation:**
+
+The arguments for using private over internal are mostly that we should use private in situations where we definitely never want any outside contract to call this fn/var, and so don’t want to introduce a footgun. However, it is just as likely you may end up needing the var from an inheriting contract in an unknown way.
+
+Conversely, the risk of an internal fn being overridden and causing a problem is the responsibility of the code author.  
+Additionally, we should strive to design contracts that are flexible enough for someone to import it directly and use it as they see fit.
+
+### TransferHelper.sol
+
+- TransferHelper library(from yield-utils-v2) and its safe transfer methods should be used when ERC20 is involved, over the native methods.[^3]
+- This will allow for a revert on a failed transation.
+  [^3]: https://soliditydeveloper.com/safe-erc20
+
+## Solidity Patterns
+
+- **Upgradeability Patterns**
+  - [**Proxy Delegate**](docs/proxy_delegate.md): Introduce the possibility to upgrade smart contracts without breaking any dependencies.
+  - [**Eternal Storage**](docs/eternal_storage.md): Keep contract storage after a smart contract upgrade.
+- **Economic Patterns**
+  - [**String Equality Comparison**](/docs/string_equality_comparison.md): Check for the equality of two provided strings in a way that minimizes average gas consumption for a large number of different inputs.
+  - [**Tight Variable Packing**](/docs/tight_variable_packing.md): Optimize gas consumption when storing or loading statically-sized variables.
+  - [**Memory Array Building**](/docs/memory_array_building.md): Aggregate and retrieve data from contract storage in a gas efficient way.
